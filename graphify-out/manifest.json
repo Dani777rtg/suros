@@ -1,0 +1,32 @@
+{
+  "01-citas-medicas.md": {
+    "mtime": 1792012691.8032503,
+    "ast_hash": "97f355491deacc176f802915d3274af9",
+    "semantic_hash": "97f355491deacc176f802915d3274af9"
+  },
+  "02-configuracion-seguridad-pacientes.md": {
+    "mtime": 1792012692.2744167,
+    "ast_hash": "053b75d348e16d89a51d87fca6122985",
+    "semantic_hash": "053b75d348e16d89a51d87fca6122985"
+  },
+  "03-facturacion.md": {
+    "mtime": 1792012160.581022,
+    "ast_hash": "546e545e74c0f6ba3f150a3264d9722d",
+    "semantic_hash": "546e545e74c0f6ba3f150a3264d9722d"
+  },
+  "04-informes-catalogos.md": {
+    "mtime": 1792012115.754656,
+    "ast_hash": "76acd5064457522f385cb7a88d2ba25e",
+    "semantic_hash": "76acd5064457522f385cb7a88d2ba25e"
+  },
+  "05-almacen-farmacia.md": {
+    "mtime": 1792012761.0052154,
+    "ast_hash": "e6bbee3419e8422a4c5c411044c7ea36",
+    "semantic_hash": "e6bbee3419e8422a4c5c411044c7ea36"
+  },
+  "06-historia-clinica.md": {
+    "mtime": 1792012821.5749857,
+    "ast_hash": "127d6f67053e015739f871d6f385118c",
+    "semantic_hash": "127d6f67053e015739f871d6f385118c"
+  }
+}
