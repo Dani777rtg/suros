@@ -2,7 +2,7 @@
 
 Resumen: este documento cubre (a) el módulo INFORMES (3 pantallas: panel de informes configurables, reporte de remisiones, reporte de citas médicas) y (b) las pantallas del menú CATALOGO PRINCIPAL: catálogos de medicamentos y plantillas (módulo Facturación), agendas del turnero y de enfermería, tickets de soporte y accesos a sub-aplicaciones (Almacén, Historia Clínica, Página Web, Punto de Venta, Punto Local). Almacén, Historia Clínica y Página Web son sub-aplicaciones con menú propio (documentadas aparte); aquí solo se describe su pantalla de inicio. Punto de Venta (otro dominio, `puntoventa.suros.co`) y Punto Local (`localhost`) no se pudieron extraer.
 
-Convención: "(inferido)" marca suposiciones no observadas directamente en la UI. Se omiten ruido global (mensajes, OK/Sí/No/Cancelar, sesión finalizada, cambio de contraseña, notificación médica, paginación, ordenar/columnas).
+Convención: "(inferido)" marca suposiciones no observadas directamente en la UI; "(confirmado en código: `funcion`)" y "(corregido según código: `funcion`)" marcan lo verificado con el JavaScript de cliente de las pantallas (`pantallas/_codigo-js.md`). Lo que ocurre en el servidor no es visible desde el cliente. Se omiten ruido global (mensajes, OK/Sí/No/Cancelar, sesión finalizada, cambio de contraseña, notificación médica, paginación, ordenar/columnas).
 
 ---
 
@@ -25,6 +25,7 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
   - Informes se organizan en carpetas/módulos por proceso (inferido).
   - La visibilidad del árbol depende de la especialidad del usuario (confirmado por el mensaje de error) (inferido el mecanismo).
   - El informe "resolución 256" apunta a indicadores de calidad normativos colombianos (inferido).
+- **Hallazgos del código**: la página no tiene funciones JS propias (`(sin funciones propias)`); el árbol, los filtros, las ventanas de creación/edición y la exportación a Excel corren en el servidor o en controles Ext declarativos, por lo que no hay validaciones de cliente ni mensajes propios que documentar.
 
 ## INFORMES > REPORTE REMISIONES (/SUROSHistoriaClinica/Vistas/Privado/Informes/ReporteRemisiones.aspx)
 - **Propósito**: consultar remisiones (derivaciones) generadas en un periodo.
@@ -32,6 +33,9 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Datos**: Tipo de Consulta {Rango De Fechas, Mes}; Inicial; Final; Año; Mes {ENERO…DICIEMBRE}.
 - **Listados**: "Reporte Remisiones": Documento | Paciente | Departamento | Teléfono | Fecha Soli | Cantidad | Código | Descripción | Observación | Especialidad Remite | Empresa | CIE10 | CIE Descripción | Persona Remite | Edad | Género.
 - **Flujos y reglas inferidas**: una fila por servicio/código remitido con su diagnóstico CIE10 (inferido). Contiene datos personales de pacientes: requiere control de acceso (inferido).
+- **Hallazgos del código**:
+  - Consultar envía `BuscarInfo({FECHAINI, FECHAFIN, CONDICION, MES, ANIO})` sin validar que las fechas o el año estén diligenciados.
+  - Exportar no pide al servidor repetir la consulta: reenvía las filas ya cargadas en la grilla (`GenerarExcel({REPORTE: filas})`), así el Excel contiene exactamente lo que se ve (`Exportar`). Si la grilla está vacía: "Por favor, primero haga la consulta" (título "Notificación").
 
 ## INFORMES > REPORTE CITAS MEDICAS (/SUROSHistoriaClinica/Vistas/Privado/Agenda/Reportes/ReporteCitasMedicas.aspx)
 - **Propósito**: reporte detallado de citas/servicios agendados con filtros múltiples.
@@ -39,6 +43,13 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Datos**: Opción de fecha {MES, RANGO DE FECHAS}; Año; Mes; FechaI/FechaF; Prestador de servicio {TODOS, PRORED - FLORENCIA - CAQUETA, PRORED - CAUCA, PRORED - PASTO - NARIÑO, PRORED - RISARALDA}; Tipo de consulta (multi) {CITAS MEDICAS, CIRUGIAS, PROCEDIMIENTOS, RAYOS X, LABORATORIOS, URGENCIAS, QUIMIOTERAPIA}; Estado de la cita (multi) {CIRUGIA, CANCELADO, NO ASISTIO, ASIGNADO, EN ATENCION, ATENDIDO, CANCELADO REPROGRAMACION, ACTIVADO, FACTURADO, ASIGNADA POR BOT}; Prioridad (multi) {PRINCIPAL, SECUNDARIO}; Jornada (multi) {TURNO 1…TURNO 10}; Campos {GENERAL, RESUMIDO}; Estado del médico/filtro {TODOS, ACTIVOS, INACTIVOS}; Diagnóstico; CUPS; Contrato.
 - **Listados**: popups MEDICO; ESPECIALIDAD; EMPRESA | REGIMEN; CONTRATO; Código | Descripción (CIE10/CUPS). Grilla principal: Fecha asignación | Fecha atención | Turno | Tipo solicitud | Tipo consulta | Tipo cita | Estado cita | Estado ingreso | Jornada | Hora | Tipo doc | Documento | Nombre paciente | Fecha nacim | Etnia | Género | Prestador servicio | Empresa | Contrato | Régimen | Cód. diagnóstico | Descripción diagnóstico | Prioridad diagnóstico | Código CUPS | Procedimientos | Doc. médico | Nombre médico | Especialidad | Tipo historia | Observación.
 - **Flujos y reglas inferidas**: una cita puede repetirse por cada diagnóstico/CUPS (inferido por columnas de prioridad y código). "Jornada" es el turno de agenda del prestador. "Asignada por BOT" indica canal automatizado de asignación (inferido). Fecha de nacimiento, etnia y género sugieren uso para reportes normativos (inferido).
+- **Hallazgos del código**:
+  - Una sola función `Consulta(TIPOACCION)` arma todos los filtros y llama `GC(...)`; los botones del reporte se distinguen por `TIPOACCION` (no se ven sus valores en el JS).
+  - Las listas múltiples (médicos, especialidades, entidades, contratos, estado, prioridad, jornada, tipo de consulta) viajan como ids o textos separados por coma; el diagnóstico y los CUPS, como códigos separados por coma. Si hay más de 5 elementos seleccionados, el cuadro de texto los abrevia a 15 caracteres más "..." (`AsignaMedico`, `AsignaEspecialidad`, `AsignaEntidad`, `AsignaContrato`).
+  - La sede activa del usuario se envía siempre como `SEDE` (tomada del combo de sede del shell: `parent.parent.App.ComboSede`), de modo que el reporte es por sede además del filtro "Prestador de servicio".
+  - Opción de fecha: MES muestra año y mes; RANGO DE FECHAS muestra fecha inicial y final (`AccionFecha`).
+  - Mensajes: "El diagnostico con código CIE10 X ya está en la lista."; "El diagnostico con código CUPS X ya está en la lista."; "Es necesario que escriba un parámetro de búsqueda." (búsqueda de diagnóstico o CUPS vacía).
+  - Al quitar el diagnóstico principal (prioridad 1) de la lista de filtro, el primero que queda pasa a ser principal (`DelDiag`).
 
 ---
 
@@ -75,6 +86,8 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Datos**: Nombre de la plantilla; Observación.
 - **Listados**: plantillas: Fecha creación | Nombre de plantilla | Activo | Observación. Medicamentos de la plantilla: Código | Nombre genérico | Nombre comercial | Forma farmacéutica | Concentración | Valor para EPS. Búsqueda: Código | Nombre genérico | Nombre comercial | Forma | Concentración.
 - **Flujos y reglas inferidas**: "Valor para EPS" es un precio pactado por entidad (inferido). Las plantillas se usan para prescribir/facturar en bloque (inferido).
+- **Hallazgos del código**:
+  - El JavaScript de la página solo contiene `eventoCerrarWinHomologador`: al cerrar la ventana limpia nombre, observación, campo de edición, medicamentos y formulario, y vacía la grilla de medicamentos. La lógica de guardado y de "Valor para EPS" está en el servidor.
 
 ## CATALOGO PRINCIPAL > PLANTILLA INSUMOS (/SUROSFacturacion/Vistas/Privado/Plantillas/PlantillaInsumos.aspx)
 - **Propósito**: igual que la anterior para insumos (la etiqueta de la UI sigue diciendo "Lista de medicamentos"/"Plantilla de medicamentos", copia de la pantalla anterior).
@@ -82,6 +95,8 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Datos**: Nombre de la plantilla; Observación.
 - **Listados**: plantillas: Fecha creación | Nombre | Activo | Observación. Insumos: Descripción | Unidad de medida | Valor para EPS. Búsqueda: Código | Nombre | Nombre.
 - **Flujos y reglas inferidas**: mismo flujo que medicamentos (inferido).
+- **Hallazgos del código**:
+  - Mismo `eventoCerrarWinHomologador` que la plantilla de medicamentos (código copiado, de ahí las etiquetas de medicamentos); sin otras reglas en el cliente.
 
 ## CATALOGO PRINCIPAL > MEDICAMENTO (/SUROSFacturacion/Vistas/Privado/Medicamentos/Medamento.aspx)
 - **Propósito**: catálogo de nombres de medicamento (principios activos / nombres base).
@@ -89,6 +104,9 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Datos**: Nombre medicamento; Es principio activo {SI, NO}; Código DCI; Clave; Activo {SI, NO}.
 - **Listados**: Nombre | Principio activo.
 - **Flujos y reglas inferidas**: este catálogo alimenta el "Nombre genérico" de la pantalla siguiente (inferido). DCI = Denominación Común Internacional (inferido).
+- **Hallazgos del código**:
+  - `guardarHomologacion` (nombre heredado de la pantalla de catálogo): sin formulario válido muestra 'Por favor complete todos los campos'; con él llama `SRV.Guardar` con CODIGO, PRINCIPIOACTIVO, DCI, CODUGOUNICO (UUID generado en el navegador con `generateUUID`), ESTADO (campo Activo) y NOMBRE en mayúsculas sin espacios sobrantes.
+  - El catálogo de medicamentos de Almacén reutiliza estos nombres por MEDA_ID (nombre y principios activos).
 
 ## CATALOGO PRINCIPAL > ADMINISTRACIÓN CATALOGO MEDICAMENTOS (/SUROSFacturacion/Vistas/Privado/Medicamentos/AdministracionMedicamentos.aspx)
 - **Propósito**: administrar el catálogo principal de presentaciones de medicamentos.
@@ -96,6 +114,8 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Datos**: Código; Nombre genérico (combo); Nombre comercial (combo); Forma farmacéutica (combo); Concentración (combo).
 - **Listados**: Fecha creación | Código | Nombre genérico | Nombre comercial | Forma farmacéutica | Concentración | Estado.
 - **Flujos y reglas inferidas**: un ítem de catálogo es la combinación genérico + comercial + forma + concentración con código propio (inferido). Es la fuente de los medicamentos de las plantillas y de la formulación (inferido).
+- **Hallazgos del código**:
+  - `guardarHomologacion`: sin formulario válido muestra 'Por favor complete todos los campos'; con él llama `SRV.Guardar` con CODIGO (mayúsculas, sin espacios sobrantes), NOMBREGENERICO, NOMBRECOMERCIAL, FORMAFARMACEUTICA, CONCENTRACION, ESTADO (casilla Activo) y CATALOGO (id al editar). `eventoCerrarWinCatalogo` reinicia el formulario.
 
 ## CATALOGO PRINCIPAL > PAGINA WEB (/SUROSPaginaWeb/Vistas/InicioPaginaWeb.aspx)
 - **Propósito**: inicio de la sub-aplicación CMS ("SoftProject | CMS"); menú propio documentado aparte.
@@ -110,7 +130,13 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
   - sobre un turno: **Activar**, **Imprimir órdenes** (ventanas "Ver formatos"/"Imprimir formatos", carta/tirilla), **Realizar nuevamente el llamado**, marcar **Atendido**, **No atendió llamado**, **Activar nuevamente el turno**.
 - **Datos**: Asesor; Puesto (Nombre, Sede); Consultorio; Especialidad; Fecha.
 - **Listados**: ID | Paciente | Documento | Consultorio | Procedimiento médico | Médico | Fecha.
-- **Flujos y reglas inferidas**: los turnos se llaman por puesto; si el paciente no responde se marca "no atendió llamado" y puede reactivarse (inferido). Al terminar, se imprimen las órdenes (inferido).
+- **Flujos y reglas inferidas**: los turnos se llaman por puesto; si el paciente no responde se marca "no atendió llamado" y puede reactivarse (confirmado en código: `generarAccionesDesdeLaAgenda` con acciones activar, atendido, noAtendioLlamado y reactivarTurno; `AccionSGR` envía `llamandoTurnoParaAntencion(PUESTOID, ..., SIGLA, PACIENTE)`). Al terminar, se imprimen las órdenes (inferido; el JS sólo muestra las hojas carta y tirilla en pestañas: `CargaHojas`).
+- **Hallazgos del código**:
+  - Servidor: `AL(fecha, todaLaAgenda, sede)`, `AC({FECHA, PENDIENTE, AGCIID})` con confirmación "Está seguro de activar el turno?"; el módulo de agenda del turnero expone `ACT.CargaAgenda`, `ACT.ActivarTurno`, `ACT.Atendido`, `ACT.NoAsistioAlLamado`, `ACT.ReactivarTurno`.
+  - Tiempo real (SignalR): el servicio se identifica con la sigla "CT" (Consultas Terminadas). Los cambios se difunden con `llamandoTurnoParaAntencion` y `actualizaTurnosEnServicio`, y las demás pantallas recargan con `recargarPanelesOnChangeDesdeSignalR`; el concentrador se conecta con `Conectar` (URL y parámetros que entrega el servidor; JSONP).
+  - Mensajes: "La Conexión a cliente SignalR, se ha realizado exitosamente" (notificación "Información!") y, si falla, "Se ha presentado un error al intentar conectar al cliente SignalR. Por favor inicialize la ventana de información al usuario!" (bloquea la pantalla 2 a 5 s).
+  - Mantiene la sesión viva cargando periódicamente un script del servidor (`MantenerSesion` -> `MantenerSesion.ashx`) para evitar el cierre por inactividad.
+  - Botones por fila según estado: el turno ya llamado y sin resolver permite sólo marcar atendido, repetir llamado, no atendió o reactivar; el turno sin llamar permite sólo "Activar"; si ya asistió o no atendió el llamado, todos quedan bloqueados (`prepararAccionesEnLinea`). Colores de fila: verde para estado de cita 4 y rojo claro para estado 1 (`RenderGrid`).
 
 ## CATALOGO PRINCIPAL > AGENDA HOSPITALIZACIÓN (/SUROSHistoriaClinica/Vistas/Privado/Agenda/Enfermeria/AgendaFacturacionHospitalizacion.aspx)
 - **Propósito**: agenda de enfermería: pacientes hospitalizados por cama, con reportes de facturación/instancia.
@@ -120,17 +146,19 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Flujos y reglas inferidas**: los colores codifican estado de la cama/paciente (inferido; leyenda no extraída). "Caso especial" marca pacientes con condición particular (inferido).
 
 ## CATALOGO PRINCIPAL > TICKETS (/SurosTickets/Vistas/Ticket.aspx)
-- **Propósito**: soporte de ayuda ("Soporte de Ayuda SoftProject"). Solo un panel; no se extrajeron campos (probablemente contenido embebido/externo) (inferido).
+- **Propósito**: soporte de ayuda ("Soporte de Ayuda SoftProject"). Solo un panel; no se extrajeron campos porque es contenido embebido de un servidor externo (corregido según código: `renderUrlTicket`, el panel carga una URL externa por HTTP, sin TLS, con otra aplicación de tickets).
+- **Hallazgos del código**: según el rol iniciado se elige la vista: el rol con id 12 abre la vista de administración (`/ticket/admin`) y los demás la vista de usuario (`/ticket/`) (`renderUrlTicket`). El permiso lo decide el id numérico del rol en el cliente, no el servidor propio; la autenticación de la aplicación externa no es visible. Sólo hay un manejador de error que escribe en consola (`failed`).
 
 ## CATALOGO PRINCIPAL > ATENCIÓN AL USUARIO (/SUROSTurnero/Vistas/Privado/Agenda/AgendaServicios.aspx)
 - **Propósito**: turnero de atención al usuario (servicios), con asesor y puesto.
 - **Funcionalidades**: El usuario puede seleccionar asesor y establecer puesto, filtrar por puesto y fecha, consultar, mostrar toda la agenda, actualizar turnos, cerrar puesto, ordenar/agrupar.
 - **Datos**: Asesor; Puesto (multi); Fecha.
 - **Listados**: ID | Instancia | Sigla | Turno | Hora | Asistió | No atendió el llamado | Método | Puesto.
-- **Flujos y reglas inferidas**: "Sigla" es el prefijo del turno por servicio y "Método" el canal de generación del turno (inferido).
+- **Flujos y reglas inferidas**: "Sigla" es el prefijo del turno por servicio (confirmado en código: `AccionSGR` de Consultas Terminadas usa `SIGLA = "CT"` como identificador del servicio) y "Método" el canal de generación del turno (inferido).
+- **Hallazgos del código**: la página no tiene funciones JS propias; el panel de turnos y el cierre de puesto corren en el servidor y la actualización llega por SignalR.
 
 ## CATALOGO PRINCIPAL > PUNTO DE VENTA (http://puntoventa.suros.co/Vista/Privado/Inicio.aspx)
-- **Propósito**: aplicación externa (otro dominio). No extraída: el acceso al marco desde `prored.suros.co` fue bloqueado por política de origen cruzado.
+- **Propósito**: aplicación externa (otro dominio). No extraída: el acceso al marco desde `prored.suros.co` fue bloqueado por política de origen cruzado. No hay JS de cliente de esta aplicación en el material disponible.
 
 ## CATALOGO PRINCIPAL > PUNTO LOCAL (http://localhost:61167/Vista/Privado/Inicio.aspx)
 - **Propósito**: apunta a un servidor local (puerto 61167), probablemente una instalación local del punto de venta (inferido). No extraída.
@@ -150,8 +178,21 @@ Convención: "(inferido)" marca suposiciones no observadas directamente en la UI
 - **Cama/hospitalización**: cama, ingreso, nota, caso especial.
 
 ## Preguntas abiertas
-1. Qué informes contiene realmente la LISTA DE INFORMES y cómo se asocian a especialidades/perfiles (el árbol no cargó); cómo se calculan los indicadores con estándar y unidad.
-2. Qué hacen exactamente "Info. Mensaje Masivos", "Reporte de Citas Demdicas" e "Informe de larga instancia"/"Reporte Instancia"; qué es "instancia".
-3. Cómo funcionan el envío de RDA (formato, destino, credenciales) y la firma del ingreso (cierra edición, valida qué).
-4. Reglas de estados del ingreso y de la cita: transiciones permitidas, quién las dispara, y cómo se anulan facturas y folios.
-5. Contenido de Tickets, Punto de Venta y Punto Local (no extraídos), y significado de la leyenda de colores de Agenda Hospitalización y de "Caso especial".
+
+### Respondidas
+1. **Cómo funciona el envío de RDA (credenciales).** La credencial no la manda el navegador: el cliente envía `CREDEN` vacío y un comentario del código indica que se resuelve en el servidor según el prestador del ingreso; el flujo tiene dos pasos, `GenerarRdaMinisterio` (generar) y `ValidarRda` (validar/enviar), con el ingreso y el tipo de RDA (código: `GenerarRda`, `EnviarRDAministerio` en Inicio Historia). La normativa asociada se cita en `ingenieria-inversa.md`; el formato lo arma el servidor.
+2. **Qué es "instancia".** Los nombres de las páginas del código (`TurnoInstanciaUrgencia`, `TurnoInstanciaRayosx`, `TurnoInstanciaUrologia`) y la columna "Instancia" del turnero indican que una instancia es el punto o cola de atención de un servicio (supuesto estándar del sector: instancia = sala o servicio con su cola de turnos).
+3. **Cómo se distinguen los botones de "Reporte de Citas Médicas".** Todos pasan por `Consulta(TIPOACCION)` con el mismo conjunto de filtros y se diferencian por `TIPOACCION` (código: `Consulta`); el significado de cada valor es del servidor.
+4. **Cómo se captura la firma del ingreso.** La pantalla de historia comprueba el servicio local de captura de firma Wacom (SigCaptX) hasta 20 veces, un segundo entre intentos (código: `checkForSigCaptX`), lo que indica captura de firma con tableta; qué valida la firma del ingreso es lógica del servidor.
+5. **Contenido de Tickets.** Aplicación externa de tickets embebida por URL; el rol con id 12 ve la vista administrativa (código: `renderUrlTicket`).
+6. **Cómo se calculan las visibilidades del árbol de informes.** El JS de Informes no tiene lógica propia; la lista depende de la especialidad del usuario según el mensaje de error observado, y la asignación por usuario se hace en "Asignación informes usuario" (código: sin funciones propias en `InicioInformes`).
+7. **Exportación a Excel del reporte de remisiones.** Exporta las filas ya cargadas en pantalla, no repite la consulta (código: `Exportar`).
+
+### Sin respuesta por ingeniería inversa
+1. Qué informes contiene realmente la LISTA DE INFORMES y cómo se calculan los indicadores con estándar y unidad: sin acceso (el árbol depende de la especialidad del usuario y la cuenta de observación no tiene ninguna) y lógica del servidor.
+2. Qué hacen exactamente "Info. Mensaje Masivos" y el valor de `TIPOACCION` de cada botón de Reporte de Citas Médicas: lógica del servidor (el JS no distingue el comportamiento).
+3. Qué es y cómo se calcula el "informe de larga instancia" / "Reporte Instancia" y la regla de qué datos entran: lógica del servidor.
+4. Reglas de estados del ingreso y de la cita: transiciones permitidas, quién las dispara, y cómo se anulan facturas y folios: lógica del servidor.
+5. Qué valida el firmado del ingreso y si cierra la edición: lógica del servidor.
+6. Contenido de Punto de Venta y Punto Local: sin acceso (otro dominio y localhost).
+7. Significado de la leyenda de colores de Agenda Hospitalización y de "Caso especial": decisión del negocio (convención de la institución; la leyenda no está en el material extraído).

@@ -38,17 +38,29 @@ DIAN (factura electrónica, notas crédito y débito, POS), RIPS y Res. 3280/188
   - Tienda en línea, porque da error del servidor.
   - Empresas y Datos personales, que cargan vacías.
   - Las reglas de negocio que el servidor aplica y que la interfaz no muestra.
-- Todo lo marcado "(inferido)" en los módulos es deducción a partir de la interfaz y hay que confirmarlo.
+- Lo marcado "(inferido)" en los módulos es deducción a partir de la interfaz; lo marcado "(confirmado en código)" o "(corregido según código)" se verificó con el JavaScript de cliente.
 
-## Preguntas abiertas prioritarias
+## Hallazgos transversales del código
 
-1. **Estados y transiciones:** cita, franja, ingreso o atención, factura, orden de compra y pedido. Falta saber qué acción dispara cada cambio y qué rol puede hacerlo.
-2. **Permisos:** qué significa cada permiso por rol (Todos/Propios, módulos indirectos), si hay restricción por sede, y quién aprueba bloqueos, traslados de agenda, anulaciones y notas.
-3. **Reglas de asignación de citas:** autorización, contrato vigente, límite por día, primera vez frente a control, y copago o cuota moderadora.
-4. **Facturación:** cómo agrupa el facturador automático, cómo se calcula cada modalidad de contrato (evento, paquete, PGP, capitación, incremento), y si glosas y radicación están en otro sistema.
-5. **Historia clínica:** formularios por especialidad (odontología, terapias, especializada), órdenes, fórmulas, interconsultas y remisiones con su ciclo, epicrisis y firma del ingreso.
-6. **Farmacia:** si el despacho de lotes es FEFO automático o manual, los umbrales del semáforo de vencimientos, y el control de medicamentos de control especial (INVIMA/CUM).
-7. **Integraciones:** formato, credenciales y reintentos de DIAN, RIPS y RDA, BOT, WhatsApp y NEOSAGE.
-8. **Alcance:** si las pantallas en "OLD" se siguen usando, y qué contienen punto de venta, tienda en línea y tickets.
+Fuente: JavaScript de cliente de las pantallas y archivos compartidos (`pantallas/_codigo-js.md`). Son hechos del cliente; lo que decide el servidor sigue sin verse.
 
-Cada módulo trae su propia lista detallada de preguntas.
+- **Patrón de ventanas:** cada pantalla vive en un iframe dentro del shell y llama a funciones de la ventana madre (`parent.SF()` sesión finalizada, `parent.AccionSGR(...)` SignalR, `parent.GAJ(acción, datos)` auditoría, `parent.CargaTab(...)` abrir pestaña). Las pantallas no hablan con SignalR directamente.
+- **Sesión y reautenticación:** el shell tiene un cambio obligatorio de clave (`CP`, mínimo 6 caracteres) distinto del de Mi cuenta (`IN`, mínimo 8); ninguno exige complejidad. Hay confirmación "Esta seguro de salir de la Sesión?" al cerrar. Las pantallas del turnero cargan periódicamente un script (`MantenerSesion.ashx`) para evitar el cierre por inactividad. La ventana "Sesión finalizada" se abre desde cualquier hijo con `SF()`.
+- **Notificaciones:** notificaciones emergentes de Ext (`Ext.net.Notification`, helper `notificar(título, html, duración)`), alertas SweetAlert2 en pantallas nuevas (Empresas, Datos paciente) frente a `Ext.Msg` en las antiguas, contador de mensajes de chat pendientes que parpadea y un audio de notificación que se repite cada 10 s. No hay notificaciones push del navegador. El archivo `NotificacionesWeb.js` está vacío.
+- **Almacenamiento local:** `BDCliente.js` sólo ofrece `JSON.stringify` y `JSON.parse` (`DataCodifica`, `DataDecodifica`) y un lector de archivos de texto; no usa IndexedDB. Cinco agendas guardan datos en `localStorage` para modo sin conexión y los purgan al cambiar el día (`VerificaDataOffLine`); el familiograma guarda su árbol en `localStorage`. No se guardan credenciales.
+- **Auxiliares compartidos:** `General1.5.js` envuelve grillas y controles de Ext (`Grid*`, `Control*`, `Combo*`); `GeneralP.js` bloquea F5 y la tecla de retroceso fuera de campos de texto, limita textareas y clasifica el IMC según la OMS (`calcularPesoEtiqueta`); `filtro.js` da filtros locales de grilla (texto, fecha, número, booleano). Casi todos los filtros y listados se calculan en el navegador sobre lo ya cargado. `md.js` define MD5 en cliente, pero ninguna pantalla lo invoca.
+- **Convenciones de llamada al servidor:** Ext.NET DirectMethods (`SRV.Metodo(...)`) en las pantallas Ext; PageMethods JSON con jQuery o `fetch` (`Pagina.aspx/Metodo`) en Empresas y Credenciales SISPRO. Nombres heredados engañosos (`GetCurrentTime` para guardar empresa, `CargarInformacionCita` para cargar empresa, `TIPODISCAPACIDAD` para el tipo de exoneración).
+- **Hosts externos (sin direcciones):** Tickets embebe por HTTP, sin TLS, una aplicación de tickets externa y elige la vista administrativa si el rol activo tiene id 12; el diseñador de consentimientos inserta el logo desde un dominio externo del cliente; el concentrador SignalR del turnero se conecta a una URL que entrega el servidor (JSONP); Punto de venta es otro dominio y Punto local apunta a localhost.
+- **Dispositivo de firma:** ocho pantallas (Activación de cita, Inicio historia, turnos de procedimientos, rayos X, urgencias, y citas de demanda inducida) usan el SDK de Wacom STU (`WacomGSS.STU`) contra el servicio local SigCaptX para capturar firma en tableta, con reintentos hasta 20 veces. Requiere el servicio instalado en el equipo del usuario.
+- **Editores:** el diseñador de consentimientos usa el editor HTML nativo de Ext con botones propios y comodines numéricos entre corchetes ([1] nombre, [4] firma, [5] huella, [11] fecha, etc.); no usa Ace. El editor JSON (JSONEditor, que empaqueta Ace) se usa en Configuración General para editar la descripción de cada configuración.
+- **Seguridad observada en cliente:**
+  - Las credenciales SISPRO regresan al navegador y se cargan en el formulario al editar.
+  - La vista administrativa de Tickets depende de un id de rol evaluado en el navegador.
+  - Los permisos "Propios/Todos" se guardan por persona y módulo indirecto.
+  - El paciente se registra con auditoría previa de la acción ("REGISTRAR PACIENTE").
+  - El responsable del paciente se guarda como una sola cadena separada por guiones.
+- **Sede:** se elige en el shell (`ComboSede`) y las pantallas operativas la envían como parámetro `SEDE`.
+
+## Preguntas
+
+Con pantallas, código JavaScript y norma colombiana se respondieron 68 preguntas; cada módulo las lista en "Respondidas", con su fuente. Lo que no se puede sacar del sistema (servidor, paciente real, decisiones del negocio) está agrupado por área en [preguntas-para-prored.md](preguntas-para-prored.md).
