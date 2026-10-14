@@ -63,4 +63,4 @@ Fuente: JavaScript de cliente de las pantallas y archivos compartidos (`pantalla
 
 ## Preguntas
 
-Con pantallas, código JavaScript y norma colombiana se respondieron 68 preguntas; cada módulo las lista en "Respondidas", con su fuente. Lo que no se puede sacar del sistema (servidor, paciente real, decisiones del negocio) está agrupado por área en [preguntas-para-prored.md](preguntas-para-prored.md).
+Uso medido en producción: [uso-real.md](uso-real.md). Con pantallas, código JavaScript y norma colombiana se respondieron 68 preguntas; cada módulo las lista en "Respondidas", con su fuente. Lo que no se puede sacar del sistema (servidor, paciente real, decisiones del negocio) está agrupado por área en [preguntas-para-prored.md](preguntas-para-prored.md).
